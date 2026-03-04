@@ -1,0 +1,21 @@
+@keyframes fadeUp{
+
+    from{
+    opacity:0;
+    transform:translateY(40px);
+    }
+    
+    to{
+    opacity:1;
+    transform:translateY(0);
+    }
+    
+    }
+    
+    .card{
+    animation:fadeUp 0.8s ease forwards;
+    }
+    
+    header{
+    animation:fadeUp 1s ease forwards;
+    }
