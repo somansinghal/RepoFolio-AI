@@ -1,0 +1,41 @@
+.dark{
+    background:#0f172a;
+    color:white;
+    }
+    
+    .glass{
+    background:linear-gradient(135deg,#0f172a,#1e293b);
+    }
+    
+    .glass .card{
+    background:rgba(255,255,255,0.1);
+    backdrop-filter:blur(10px);
+    }
+    
+    .cyber{
+    background:black;
+    color:#00ff9f;
+    }
+    
+    .cyber .card{
+    border:1px solid #00ff9f;
+    }
+    
+    .minimal{
+    background:white;
+    color:black;
+    }
+    
+    .minimal .card{
+    background:white;
+    border:1px solid #ddd;
+    }
+    
+    .gradient{
+    background:linear-gradient(120deg,#6366f1,#9333ea);
+    }
+    
+    .gradient .card{
+    background:white;
+    color:black;
+    }
