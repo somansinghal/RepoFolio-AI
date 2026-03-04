@@ -11,35 +11,43 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="themes.css">
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
 
 </head>
 
 <body class="dark">
 
-<header>
-
 <h1>RepoFolio AI</h1>
-<p>Generate portfolio from GitHub instantly</p>
-
-</header>
+<p>Turn your GitHub profile into a powerful developer portfolio instantly</p>
 
 <div class="controls">
 
-<input id="username" placeholder="Enter GitHub Username">
+<input id="username" placeholder="Enter GitHub username">
 
 <select id="themeSelect">
-<option value="dark">Dark Dev</option>
-<option value="glass">Glassmorphism</option>
+<option value="dark">Dark</option>
+<option value="glass">Glass</option>
 <option value="cyber">Cyberpunk</option>
 <option value="minimal">Minimal</option>
-<option value="gradient">Gradient Pro</option>
+<option value="gradient">Gradient</option>
+</select>
+
+<select id="sortRepos">
+<option value="stars">Sort by Stars</option>
+<option value="name">Sort by Name</option>
 </select>
 
 <button onclick="generatePortfolio()">Generate</button>
-<button onclick="downloadPortfolio()">Download Portfolio</button>
+<button onclick="downloadPortfolio()">Download</button>
+<button onclick="sharePortfolio()">Share</button>
 
 </div>
+
+<input id="repoSearch" placeholder="Search repositories" onkeyup="filterRepos()">
+
+<div id="loader" class="loader"></div>
 
 <div id="portfolio"></div>
 
