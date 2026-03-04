@@ -1,204 +1,351 @@
 const GITHUB_TOKEN = "Your api key"
 
-async function generatePortfolio(){
-
-const loader=document.getElementById("loader")
 const portfolio=document.getElementById("portfolio")
 
-loader.style.display="block"
-portfolio.innerHTML=""
+let repos=[]
+
+
+
+const params=new URLSearchParams(window.location.search)
+const sharedUser=params.get("user")
+
+if(sharedUser){
+
+document.getElementById("username").value=sharedUser
+generatePortfolio()
+
+}
+
+
+async function generatePortfolio(){
 
 const username=document.getElementById("username").value
-const theme=document.getElementById("themeSelect").value
-const sortType=document.getElementById("sortRepos").value
 
-document.body.className=theme
-
-const headers={
-Authorization:`token ${GITHUB_TOKEN}`
-}
-
-const userRes=await fetch(`https://api.github.com/users/${username}`,{headers})
+const userRes=await fetch(`https://api.github.com/users/${username}`)
 const user=await userRes.json()
 
-const repoRes=await fetch(`https://api.github.com/users/${username}/repos`,{headers})
-const repos=await repoRes.json()
+const repoRes=await fetch(`https://api.github.com/users/${username}/repos`)
+repos=await repoRes.json()
 
-const eventsRes=await fetch(`https://api.github.com/users/${username}/events`,{headers})
-const events=await eventsRes.json()
-
-if(sortType==="stars"){
-repos.sort((a,b)=>b.stargazers_count-a.stargazers_count)
-}
-
-if(sortType==="name"){
-repos.sort((a,b)=>a.name.localeCompare(b.name))
-}
-
-let stars=repos.reduce((acc,repo)=>acc+repo.stargazers_count,0)
-
+let totalStars=0
 let languages={}
-repos.forEach(repo=>{
-if(repo.language){
-languages[repo.language]=(languages[repo.language]||0)+1
-}
+
+repos.forEach(r=>{
+
+totalStars+=r.stargazers_count
+
+if(r.language)
+languages[r.language]=(languages[r.language]||0)+1
+
 })
 
-let skills=Object.keys(languages)
 
-let score=calculateScore(user,repos,stars)
+const score=Math.min(10,Math.floor((repos.length+user.followers+totalStars)/10))
 
-const topRepo=repos.sort((a,b)=>b.stargazers_count-a.stargazers_count)[0]
 
 let html=`
 
 <div class="card">
-<img src="${user.avatar_url}">
-<h2>${user.name||username}</h2>
-<p>${user.bio||""}</p>
+
+<img src="${user.avatar_url}" width="80">
+
+<h2>${user.name||user.login}</h2>
+
 <p>Followers: ${user.followers}</p>
-<p>Following: ${user.following}</p>
-<p>Public Repos: ${user.public_repos}</p>
-<p>Total Stars ⭐ ${stars}</p>
+
+<p>Repos: ${user.public_repos}</p>
+
+<p>Total Stars: ${totalStars}</p>
+
 </div>
 
-<div class="card">
-<h3>Developer Score</h3>
-<h1>${score} / 10</h1>
-</div>
-
-<div class="card">
-<h3>Language Analytics</h3>
-<canvas id="langChart"></canvas>
-</div>
-
-<div class="card">
-<h3>GitHub Contributions</h3>
-<img src="https://ghchart.rshah.org/${username}">
-</div>
-
-<div class="card">
-<h3>GitHub Streak</h3>
-<img src="https://github-readme-streak-stats.herokuapp.com/?user=${username}">
-</div>
-
-<div class="card">
-<h3>Top Languages</h3>
-<img src="https://github-readme-stats.vercel.app/api/top-langs/?username=${username}&layout=compact">
-</div>
-
-<div class="card">
-<h3>Detected Skills</h3>
-${skills.map(s=>`<span class="skill">${s}</span>`).join("")}
-</div>
-
-<div class="card">
-<h3>Top Repository</h3>
-<h2>${topRepo.name}</h2>
-<p>⭐ ${topRepo.stargazers_count}</p>
-<a href="${topRepo.html_url}" target="_blank">View Repo</a>
-</div>
-
-<div class="card">
-<h3>Recent Activity</h3>
-<ul>
-${events.slice(0,5).map(e=>`<li>${e.type}</li>`).join("")}
-</ul>
-</div>
 `
 
-repos.slice(0,6).forEach(repo=>{
+
+
 
 html+=`
 
-<div class="card repo-card">
-<h3>${repo.name}</h3>
-<p>${repo.description||"Project repository"}</p>
-<p>⭐ ${repo.stargazers_count}</p>
-<a href="${repo.html_url}" target="_blank">View Repo</a>
+<div class="card">
+
+<h3>Developer Badge</h3>
+
+<h2>${getDeveloperBadge(score)}</h2>
+
 </div>
 
 `
+
+
+
+html+=`
+
+<div class="card">
+
+<h3>Developer Rank</h3>
+
+<h2>${calculateRank(score)}</h2>
+
+</div>
+
+`
+
+
+
+const review=generateAIReview(user,repos,totalStars)
+
+html+=`
+
+<div class="card">
+
+<h3>AI GitHub Profile Review</h3>
+
+<h4>Strengths</h4>
+
+<ul>
+${review.strengths.map(s=>`<li>✔ ${s}</li>`).join("")}
+</ul>
+
+<h4>Improvements</h4>
+
+<ul>
+${review.improvements.map(i=>`<li>⚠ ${i}</li>`).join("")}
+</ul>
+
+</div>
+
+`
+
+
+
+
+html+=`
+
+<div class="card">
+
+<h3>Detected Skills</h3>
+
+${Object.keys(languages).map(l=>`<span class="skill">${l}</span>`).join("")}
+
+</div>
+
+`
+
+
+
+html+=`
+
+<div class="card">
+
+<h3>Activity Heatmap</h3>
+
+<div id="heatmap"></div>
+
+</div>
+
+`
+
+
+
+const topRepo=repos.sort((a,b)=>b.stargazers_count-a.stargazers_count)[0]
+
+html+=`
+
+<div class="card">
+
+<h3>Top Repository</h3>
+
+<h2>${topRepo.name}</h2>
+
+<p>⭐ ${topRepo.stargazers_count}</p>
+
+</div>
+
+`
+
+
+
+
+repos.forEach(r=>{
+
+html+=`
+
+<div class="card repo">
+
+<h3>${r.name}</h3>
+
+<p>${r.description||"Project repository"}</p>
+
+<p>⭐ ${r.stargazers_count}</p>
+
+<a href="${r.html_url}" target="_blank">View Repo</a>
+
+</div>
+
+`
+
 })
+
 
 portfolio.innerHTML=html
 
-loader.style.display="none"
-
-setTimeout(()=>{
-
-const ctx=document.getElementById("langChart")
-
-new Chart(ctx,{
-type:"doughnut",
-data:{
-labels:Object.keys(languages),
-datasets:[{
-data:Object.values(languages)
-}]
-}
-})
-
-},500)
+generateHeatmap()
 
 }
 
-function calculateScore(user,repos,stars){
 
-let score=0
 
-score+=Math.min(user.followers*0.2,2)
-score+=Math.min(repos.length*0.1,2)
-score+=Math.min(stars*0.05,3)
-score+=Math.min(user.public_repos*0.1,3)
+function getDeveloperBadge(score){
 
-return score.toFixed(1)
+if(score>8) return "🏆 Elite Developer"
+if(score>6) return "🚀 Advanced Developer"
+if(score>4) return "💻 Intermediate Developer"
+
+return "🌱 Beginner Developer"
 
 }
+
+
+
+function calculateRank(score){
+
+if(score>8) return "Top 5% Developer"
+if(score>6) return "Top 10% Developer"
+if(score>4) return "Top 25% Developer"
+
+return "Rising Developer"
+
+}
+
+
+
+
+function generateAIReview(user,repos,totalStars){
+
+let strengths=[]
+let improvements=[]
+
+if(user.followers>20)
+strengths.push("Strong community presence")
+
+if(repos.length>20)
+strengths.push("Highly active open-source contributor")
+
+if(totalStars>50)
+strengths.push("Projects gaining popularity")
+
+if(repos.length<5)
+improvements.push("Build more repositories")
+
+if(totalStars<10)
+improvements.push("Promote projects to gain stars")
+
+if(!strengths.length)
+strengths.push("Building early stage developer portfolio")
+
+return {strengths,improvements}
+
+}
+
+
+
+function generateHeatmap(){
+
+const heat=document.getElementById("heatmap")
+
+let grid=""
+
+for(let i=0;i<50;i++){
+
+const level=Math.floor(Math.random()*4)
+
+grid+=`<div class="heat level-${level}"></div>`
+
+}
+
+heat.innerHTML=grid
+
+}
+
+
+
 
 function filterRepos(){
 
-const input=document.getElementById("repoSearch").value.toLowerCase()
-const cards=document.querySelectorAll(".repo-card")
+const value=document.getElementById("repoSearch").value.toLowerCase()
 
-cards.forEach(card=>{
-if(card.innerText.toLowerCase().includes(input)){
-card.style.display="block"
-}else{
-card.style.display="none"
-}
+document.querySelectorAll(".repo").forEach(r=>{
+
+r.style.display=r.innerText.toLowerCase().includes(value)?"block":"none"
+
 })
 
 }
 
-function downloadPortfolio(){
 
-const html=document.getElementById("portfolio").innerHTML
 
-const blob=new Blob([html],{type:"text/html"})
-const url=URL.createObjectURL(blob)
-
-const a=document.createElement("a")
-a.href=url
-a.download="github-portfolio.html"
-a.click()
-
-}
 
 function sharePortfolio(){
 
 const username=document.getElementById("username").value
-const link=`${window.location.origin}?user=${username}`
 
-navigator.clipboard.writeText(link)
+const url=`${window.location.origin}?user=${username}`
 
-alert("Portfolio link copied!")
+navigator.clipboard.writeText(url)
+
+alert("Share link copied: "+url)
 
 }
 
-const params=new URLSearchParams(window.location.search)
 
-if(params.get("user")){
-document.getElementById("username").value=params.get("user")
-generatePortfolio()
+
+
+function downloadPortfolio(){
+
+const content=portfolio.innerHTML
+
+const blob=new Blob([content],{type:"text/html"})
+
+const url=URL.createObjectURL(blob)
+
+const a=document.createElement("a")
+
+a.href=url
+a.download="portfolio.html"
+
+a.click()
+
+}
+
+
+
+
+async function compareDevelopers(){
+
+const u1=document.getElementById("username").value
+const u2=document.getElementById("compareUser").value
+
+if(!u1||!u2)return
+
+const user1=await fetch(`https://api.github.com/users/${u1}`).then(r=>r.json())
+const user2=await fetch(`https://api.github.com/users/${u2}`).then(r=>r.json())
+
+document.getElementById("comparison").innerHTML=`
+
+<div class="card">
+
+<h2>Developer Comparison</h2>
+
+<p>${user1.login} Followers: ${user1.followers}</p>
+
+<p>${user2.login} Followers: ${user2.followers}</p>
+
+<p>${user1.login} Repos: ${user1.public_repos}</p>
+
+<p>${user2.login} Repos: ${user2.public_repos}</p>
+
+</div>
+
+`
+
 }
